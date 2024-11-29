@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            background-color: #f0f0f0;
+            margin: 0;
+        }
+
+        .container {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            margin: 10px;
+            width: 90%;
+            max-width: 1200px;
+        }
+
+        input[type="text"] {
+            padding: 10px;
+            width: 200px;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+
+        button {
+            padding: 10px 20px;
+            cursor: pointer;
+        }
+
+        .response-container {
+            margin-top: 20px;
+        }
+
+        .details-container {
+            display: flex;
+            gap: 20px;
+            justify-content: space-between;
+            margin-top: 20px;
+        }
+
+        .data-container {
+            background-color: #f5f5f5;
+            padding: 10px;
+            border-radius: 8px;
+            text-align: left;
+        }
+
+        .code-container {
+            background-color: #f5f5f5;
+            padding: 10px;
+            border-radius: 8px;
+            width: 50%;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+
+        th, td {
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f4f4f4;
+        }
+
+        .loading {
+            display: none;
+            margin-top: 20px;
+            font-size: 18px;
+            font-weight: bold;
+            color: #007BFF;
+        }
+
+        .spinner {
+            border: 8px solid #f3f3f3;
+            border-top: 8px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 3s linear infinite;
+            margin-right: 10px;
+            display: inline-block;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        #chart-container {
+            background-color: #f5f5f5;
+            padding: 10px;
+            border-radius: 8px;
+            width: 50%;
+            height: 600px;
+        }
+
+        #myChart {
+            width: 100%;
+            height: 300px;
+        }
+
+        #paginationControls {
+            margin-top: 20px;
+        }
+        .pagination-controls button {
+        font-size: 12px; /* Adjust font size */
+        padding: 5px 10px; /* Adjust padding */
+        margin: 2px; /* Adjust margin between buttons */
+        cursor: pointer;
+        }
+
+        .pagination-controls button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>AI-Enabled Analytical Tool</h1>
+        
+        <input type="text" id="textInput2" placeholder="Enter Text">
+        <button id="processBtn">Process</button>
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            Loading...
+        </div>
+        <div class="details-container">
+            <div class="code-container" id="codeContainer">
+                <p><strong>Description:</strong></p>
+                <table id="demotable">
+                    <thead>
+                        <tr>
+                            <th>Stat</th>
+                            <th>Data Count.</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <div id="chart-container">
+                <p><strong>Pie Chart:</strong></p>
+                <canvas id="myChart"></canvas>
+            </div>
+        </div>
+        <div class="response-container" id="responseContainer">
+            <div class="data-container" id="dataContainer">
+                <p><strong>Data:</strong></p>
+            </div>
+            <div id="paginationControls"></div> <!-- Pagination controls -->
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        $(document).ready(function() {
+            const rowsPerPage = 14; // Number of rows per page
+            let currentPage = 1;
+            let data = []; // To hold the response data
+    
+            $('#processBtn').click(function() {
+                const userInput2 = $('#textInput2').val();
+                
+                $('#loading').show();
+    
+                $.ajax({
+                    url: `http://127.0.0.1:8000/gettext/${userInput2}`,
+                    method: 'GET',
+                    success: function(response) {
+                        $('#loading').hide();
+    
+                        // Clear previous content
+                        $('#dataContainer').html('<p><strong>Data:</strong></p>');
+                        $('#demotable tbody').empty();
+                        $('#myChart').remove(); // Remove the canvas element
+                        $('#chart-container').append('<canvas id="myChart"></canvas>'); // Append a new canvas element
+                        $('#codeContainer').html('<p><strong>Description:</strong></p><table id="demotable"><thead><tr><th>Stat</th><th>Emp No.</th></tr></thead><tbody></tbody></table>'); // Clear code container and reset the table structure
+    
+                        let descriptionHtml = `<p><strong>Data Description:</strong></p>`;
+                        console.log(response.output);
+                        if (response.output && Array.isArray(response.output) && response.output.length > 0) {
+                            const stats = ["Row Count", "Mean", "Std", "Min", "25%", "50%", "75%", "Max"];
+                            var dt = "";
+                            for (var i = 0; i < response.output.length; i++) {
+                                dt += '<tr><td>' + stats[i] + '</td><td>' + response.output[i] + '</td></tr>';
+                            }
+                            $('#demotable tbody').append(dt);
+                        } else {
+                            dt = `<p>No description available.</p>`;
+                        }
+    
+                        console.log(response.data);
+                        if (response.data && response.data.length > 0) {
+                            data = response.data; // Store the response data
+                            renderTable(currentPage); // Render the first page
+                            renderPagination(); // Render pagination controls
+                        } else {
+                            $('#dataContainer').append(`<p>No data available.</p>`);
+                        }
+    
+                        const genderCounts = response.data.reduce((acc, row) => {
+                            const gender = row.gender;
+                            if (gender) {
+                                acc[gender] = (acc[gender] || 0) + 1;
+                            }
+                            return acc;
+                        }, {});
+    
+                        const chartLabels = Object.keys(genderCounts);
+                        const chartData = Object.values(genderCounts);
+    
+                        const ctx = document.getElementById('myChart').getContext('2d');
+                        new Chart(ctx, {
+                            type: 'pie',
+                            data: {
+                                labels: chartLabels,
+                                datasets: [{
+                                    label: 'Gender Distribution',
+                                    radius: "80%",
+                                    data: chartData,
+                                    backgroundColor: [
+                                        'rgba(255, 99, 132, 0.2)',
+                                        'rgba(54, 162, 235, 0.2)',
+                                        'rgba(255, 206, 86, 0.2)'
+                                    ],
+                                    borderColor: [
+                                        'rgba(255, 99, 132, 1)',
+                                        'rgba(54, 162, 235, 1)',
+                                        'rgba(255, 206, 86, 1)'
+                                    ],
+                                    borderWidth: 1
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: {
+                                    legend: {
+                                        position: 'top',
+                                    },
+                                    tooltip: {
+                                        callbacks: {
+                                            label: function(tooltipItem) {
+                                                return `${tooltipItem.label}: ${tooltipItem.raw}`;
+                                            }
+                                        }
+                                    }
+                                },
+                                elements: {
+                                    arc: {
+                                        borderRadius: 4 // Adjust the border radius as needed
+                                    }
+                                }
+                            }
+                        });
+    
+                    },
+                    error: function(xhr, status, error) {
+                        $('#loading').hide();
+                        $('#responseContainer').html(`<p>An error occurred: ${xhr.status} - ${xhr.statusText}</p>`);
+                    }
+                });
+            });
+    
+            function renderTable(page = 1) {
+                const start = (page - 1) * rowsPerPage;
+                const end = start + rowsPerPage;
+                const pageData = data.slice(start, end);
+    
+                let tableHtml = `<table>
+                                    <thead>
+                                      <tr>`;
+                
+                if (pageData.length > 0) {
+                    Object.keys(pageData[0]).forEach(key => {
+                        tableHtml += `<th>${key}</th>`;
+                    });
+                    tableHtml += `</tr></thead><tbody>`;
+                    
+                    pageData.forEach(row => {
+                        tableHtml += `<tr>`;
+                        Object.values(row).forEach(value => {
+                            tableHtml += `<td>${value}</td>`;
+                        });
+                        tableHtml += `</tr>`;
+                    });
+                    tableHtml += `</tbody></table>`;
+                } else {
+                    tableHtml = `<p>No data available.</p>`;
+                }
+    
+                $('#dataContainer').html(tableHtml);
+            }
+    
+            function renderPagination() {
+                const totalPages = Math.ceil(data.length / rowsPerPage);
+    
+                let paginationHtml = `<div class="pagination-controls">`;
+                paginationHtml += `<button onclick="changePage(1)">First</button>`;
+                paginationHtml += `<button onclick="changePage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>Previous</button>`;
+                paginationHtml += `<span>Page ${currentPage} of ${totalPages}</span>`;
+                paginationHtml += `<button onclick="changePage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>Next</button>`;
+                paginationHtml += `<button onclick="changePage(${totalPages})">Last</button>`;
+    
+                $('#paginationControls').html(paginationHtml);
+            }
+    
+            window.changePage = function(page) {
+                const totalPages = Math.ceil(data.length / rowsPerPage);
+                if (page >= 1 && page <= totalPages) {
+                    currentPage = page;
+                    renderTable(currentPage);
+                    renderPagination();
+                }
+            }
+        });
+    </script>
+</body>
+</html>
